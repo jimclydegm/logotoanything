@@ -6,8 +6,8 @@ import { ApplicationLayout } from './application-layout'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s - Catalyst',
-    default: 'Catalyst',
+    template: '%s - LogoToAnything',
+    default: 'LogoToAnything',
   },
   description: '',
 }

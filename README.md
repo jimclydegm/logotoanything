@@ -1,6 +1,6 @@
-# Catalyst Demo
+# LogoToAnything
 
-To run the Catalyst demo, first install the npm dependencies:
+To run the LogoToAnything application, first install the npm dependencies:
 
 ```bash
 npm install
