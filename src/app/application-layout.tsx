@@ -42,11 +42,14 @@ import {
   TicketIcon,
 } from '@heroicons/react/20/solid'
 import { usePathname } from 'next/navigation'
+import { useSession, signOut } from 'next-auth/react'
+import { Button } from '@/components/button'
+import Link from 'next/link'
 
 function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' }) {
   return (
     <DropdownMenu className="min-w-64" anchor={anchor}>
-      <DropdownItem href="#">
+      <DropdownItem href="/profile">
         <UserCircleIcon />
         <DropdownLabel>My account</DropdownLabel>
       </DropdownItem>
@@ -60,7 +63,7 @@ function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' })
         <DropdownLabel>Share feedback</DropdownLabel>
       </DropdownItem>
       <DropdownDivider />
-      <DropdownItem href="#">
+      <DropdownItem onClick={() => signOut({ callbackUrl: '/' })}>
         <ArrowRightStartOnRectangleIcon />
         <DropdownLabel>Sign out</DropdownLabel>
       </DropdownItem>
@@ -75,7 +78,9 @@ export function ApplicationLayout({
   events: Awaited<ReturnType<typeof getEvents>>
   children: React.ReactNode
 }) {
-  let pathname = usePathname()
+  const pathname = usePathname()
+  const { data: session } = useSession()
+  const userIsAuthenticated = !!session?.user
 
   return (
     <SidebarLayout
@@ -83,12 +88,22 @@ export function ApplicationLayout({
         <Navbar>
           <NavbarSpacer />
           <NavbarSection>
-            <Dropdown>
-              <DropdownButton as={NavbarItem}>
-                <Avatar src="/users/erica.jpg" square />
-              </DropdownButton>
-              <AccountDropdownMenu anchor="bottom end" />
-            </Dropdown>
+            {userIsAuthenticated ? (
+              <Dropdown>
+                <DropdownButton as={NavbarItem}>
+                  <Avatar
+                    src={session.user.image || null}
+                    square
+                    initials={session.user.name ? session.user.name[0] : 'U'}
+                  />
+                </DropdownButton>
+                <AccountDropdownMenu anchor="bottom end" />
+              </Dropdown>
+            ) : (
+              <Link href="/login">
+                <Button>Sign In</Button>
+              </Link>
+            )}
           </NavbarSection>
         </Navbar>
       }
@@ -168,21 +183,36 @@ export function ApplicationLayout({
           </SidebarBody>
 
           <SidebarFooter className="max-lg:hidden">
-            <Dropdown>
-              <DropdownButton as={SidebarItem}>
-                <span className="flex min-w-0 items-center gap-3">
-                  <Avatar src="/users/erica.jpg" className="size-10" square alt="" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">Erica</span>
-                    <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
-                      erica@example.com
+            {userIsAuthenticated ? (
+              <Dropdown>
+                <DropdownButton as={SidebarItem}>
+                  <span className="flex min-w-0 items-center gap-3">
+                    <Avatar 
+                      src={session.user.image || null} 
+                      className="size-10" 
+                      square 
+                      alt="" 
+                      initials={session.user.name ? session.user.name[0] : 'U'} 
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">
+                        {session.user.name || 'User'}
+                      </span>
+                      <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
+                        {session.user.email || ''}
+                      </span>
                     </span>
                   </span>
-                </span>
-                <ChevronUpIcon />
-              </DropdownButton>
-              <AccountDropdownMenu anchor="top start" />
-            </Dropdown>
+                  <ChevronUpIcon />
+                </DropdownButton>
+                <AccountDropdownMenu anchor="top start" />
+              </Dropdown>
+            ) : (
+              <SidebarItem href="/login">
+                <UserCircleIcon />
+                <SidebarLabel>Sign In</SidebarLabel>
+              </SidebarItem>
+            )}
           </SidebarFooter>
         </Sidebar>
       }
