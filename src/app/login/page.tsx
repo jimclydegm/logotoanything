@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { signIn, useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabaseClient } from '@/utils/supabase/client';
 
 export default function LoginPage() {
   const { data: session, status } = useSession();
@@ -16,6 +17,36 @@ export default function LoginPage() {
       router.push('/');
     }
   }, [status, router]);
+
+  // Handle Supabase Google sign-in
+  const handleGoogleSignIn = async () => {
+    try {
+      // Let Supabase handle the redirect automatically
+      // This uses the site URL configured in your Supabase dashboard
+      console.log('Attempting sign in with Google OAuth');
+      
+      const { data, error } = await supabaseClient.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          // Don't specify redirectTo - let Supabase use its default settings
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+            scope: 'email profile openid',
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Error signing in with Google:', error.message);
+        // Show error to user
+        alert(`Sign in error: ${error.message}`);
+      }
+    } catch (err) {
+      console.error('Unexpected error during sign in:', err);
+      alert('An unexpected error occurred during sign in');
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 dark:bg-zinc-900">
@@ -31,7 +62,7 @@ export default function LoginPage() {
 
         <div className="flex flex-col items-center gap-4 pt-4">
           <Button
-            onClick={() => signIn('google', { callbackUrl: '/' })}
+            onClick={handleGoogleSignIn}
             className="w-48 h-12 px-4 flex items-center justify-center gap-3 bg-blue-600 border border-blue-700 text-white font-semibold hover:bg-blue-700 dark:bg-blue-600 dark:border-blue-700 dark:text-white dark:hover:bg-blue-700"
           >
             <svg

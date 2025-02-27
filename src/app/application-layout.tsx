@@ -42,11 +42,13 @@ import {
   TicketIcon,
 } from '@heroicons/react/20/solid'
 import { usePathname } from 'next/navigation'
-import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/button'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { supabaseClient } from '@/utils/supabase/client'
+import { Session } from '@supabase/supabase-js'
 
-function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' }) {
+function AccountDropdownMenu({ anchor, onSignOut }: { anchor: 'top start' | 'bottom end', onSignOut: () => void }) {
   return (
     <DropdownMenu className="min-w-64" anchor={anchor}>
       <DropdownItem href="/profile">
@@ -63,7 +65,7 @@ function AccountDropdownMenu({ anchor }: { anchor: 'top start' | 'bottom end' })
         <DropdownLabel>Share feedback</DropdownLabel>
       </DropdownItem>
       <DropdownDivider />
-      <DropdownItem onClick={() => signOut({ callbackUrl: '/' })}>
+      <DropdownItem onClick={onSignOut}>
         <ArrowRightStartOnRectangleIcon />
         <DropdownLabel>Sign out</DropdownLabel>
       </DropdownItem>
@@ -79,7 +81,41 @@ export function ApplicationLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Get Supabase session
+  useEffect(() => {
+    async function getSession() {
+      setLoading(true)
+      const { data: { session }, error } = await supabaseClient.auth.getSession()
+      if (error) {
+        console.error('Error fetching session:', error.message)
+      }
+      setSession(session)
+      setLoading(false)
+
+      // Set up auth state listener
+      const {
+        data: { subscription },
+      } = supabaseClient.auth.onAuthStateChange((_event: string, session: Session | null) => {
+        setSession(session)
+      })
+
+      return () => subscription.unsubscribe()
+    }
+
+    getSession()
+  }, [])
+
+  // Handle sign out
+  const handleSignOut = async () => {
+    const { error } = await supabaseClient.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error.message)
+    }
+  }
+
   const userIsAuthenticated = !!session?.user
 
   return (
@@ -92,12 +128,12 @@ export function ApplicationLayout({
               <Dropdown>
                 <DropdownButton as={NavbarItem}>
                   <Avatar
-                    src={session.user.image || null}
+                    src={session.user?.user_metadata?.avatar_url || null}
                     square
-                    initials={session.user.name ? session.user.name[0] : 'U'}
+                    initials={session.user?.email?.[0]?.toUpperCase() || 'U'}
                   />
                 </DropdownButton>
-                <AccountDropdownMenu anchor="bottom end" />
+                <AccountDropdownMenu anchor="bottom end" onSignOut={handleSignOut} />
               </Dropdown>
             ) : (
               <Link href="/login">
@@ -188,24 +224,24 @@ export function ApplicationLayout({
                 <DropdownButton as={SidebarItem}>
                   <span className="flex min-w-0 items-center gap-3">
                     <Avatar 
-                      src={session.user.image || null} 
+                      src={session.user?.user_metadata?.avatar_url || null}
                       className="size-10" 
                       square 
                       alt="" 
-                      initials={session.user.name ? session.user.name[0] : 'U'} 
+                      initials={session.user?.email?.[0]?.toUpperCase() || 'U'}
                     />
                     <span className="min-w-0">
                       <span className="block truncate text-sm/5 font-medium text-zinc-950 dark:text-white">
-                        {session.user.name || 'User'}
+                        {session.user?.user_metadata?.full_name || session.user?.email || 'User'}
                       </span>
                       <span className="block truncate text-xs/5 font-normal text-zinc-500 dark:text-zinc-400">
-                        {session.user.email || ''}
+                        {session.user?.email || ''}
                       </span>
                     </span>
                   </span>
                   <ChevronUpIcon />
                 </DropdownButton>
-                <AccountDropdownMenu anchor="top start" />
+                <AccountDropdownMenu anchor="top start" onSignOut={handleSignOut} />
               </Dropdown>
             ) : (
               <SidebarItem href="/login">
